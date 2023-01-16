@@ -20,6 +20,7 @@ import BitmovinApi, {
   ManifestResource,
   MuxingStream,
   PresetConfiguration,
+  S3Input,
   S3Output,
   StartEncodingRequest,
   Stream,
@@ -36,10 +37,12 @@ const bitmovinApi = new BitmovinApi.default({
   apiKey: process.env.BITMOVIN_API_KEY,
 });
 
-const input = await bitmovinApi.encoding.inputs.https.create(
-  new HttpsInput({
-    host: 'https://ezdrm-demos.s3.amazonaws.com/BigBuckBunny_320x180.mp4',
-    name: 'BigBuckBunny_320x180.mp4',
+const input = await bitmovinApi.encoding.inputs.s3.create(
+  new S3Input({
+    name: process.env.S3_INPUT_NAME,
+    accessKey: process.env.S3_ACCESS_KEY,
+    secretKey: process.env.S3_SECRET_KEY,
+    bucketName: process.env.S3_BUCKET_NAME,
   })
 );
 
@@ -48,9 +51,11 @@ const output = await bitmovinApi.encoding.outputs.s3.create(
     name: 'Big Buck Bunny Output',
     accessKey: process.env.S3_ACCESS_KEY,
     secretKey: process.env.S3_SECRET_KEY,
-    bucketName: 'ar-bitmovin-testing',
+    bucketName: process.env.S3_BUCKET_NAME,
   })
 );
+
+const outputId = output.id;
 
 const videoCodecConfiguration1 =
   await bitmovinApi.encoding.configurations.video.h264.create(
@@ -95,7 +100,7 @@ const encoding = await bitmovinApi.encoding.encodings.create(
   })
 );
 
-const inputPath = input.host;
+const inputPath = process.env.S3_INPUT_PATH;
 
 const videoStreamInput = new StreamInput({
   inputId: input.id,
@@ -144,8 +149,7 @@ const aclEntry = new AclEntry({
 });
 
 const segmentLength = 4;
-const outputPath =
-  's3://arn:aws:s3:us-east-1:507650690552:accesspoint/output-testing';
+const outputPath = 'output/';
 const segmentNaming = 'seg_%number%.m4s';
 const initSegmentName = 'init.mp4';
 
@@ -158,8 +162,8 @@ const videoMuxing1 = await bitmovinApi.encoding.encodings.muxings.fmp4.create(
     streams: [new MuxingStream({ streamId: videoStream1.id })],
     outputs: [
       new EncodingOutput({
-        outputId: output.id,
-        outputPath: `${outputPath}/video/1024_1500000/fmp4/`,
+        outputId,
+        outputPath: `${outputPath}video/1024_1500000/fmp4/`,
         acl: [aclEntry],
       }),
     ],
@@ -174,8 +178,8 @@ const videoMuxing2 = await bitmovinApi.encoding.encodings.muxings.fmp4.create(
     streams: [new MuxingStream({ streamId: videoStream2.id })],
     outputs: [
       new EncodingOutput({
-        outputId: output.id,
-        outputPath: `${outputPath}/video/768_1000000/fmp4/`,
+        outputId,
+        outputPath: `${outputPath}video/768_1000000/fmp4/`,
         acl: [aclEntry],
       }),
     ],
@@ -191,7 +195,7 @@ const videoMuxing3 = await bitmovinApi.encoding.encodings.muxings.fmp4.create(
     outputs: [
       new EncodingOutput({
         outputId: output.id,
-        outputPath: `${outputPath}/video/640_750000/fmp4/`,
+        outputPath: `${outputPath}video/640_750000/fmp4/`,
         acl: [aclEntry],
       }),
     ],
@@ -207,8 +211,8 @@ const audioMuxing = await bitmovinApi.encoding.encodings.muxings.fmp4.create(
     streams: [new MuxingStream({ streamId: audioStream.id })],
     outputs: [
       new EncodingOutput({
-        outputId: output.id,
-        outputPath: `${outputPath}/audio/128000/fmp4/`,
+        outputId,
+        outputPath: `${outputPath}audio/128000/fmp4/`,
         acl: [aclEntry],
       }),
     ],
@@ -216,7 +220,7 @@ const audioMuxing = await bitmovinApi.encoding.encodings.muxings.fmp4.create(
 );
 
 const manifestOutput = new EncodingOutput({
-  outputId: output.id,
+  outputId,
   outputPath,
   acl: [
     new AclEntry({
@@ -254,15 +258,12 @@ const startEncodingRequest = new StartEncodingRequest({
   vodHlsManifests: [new ManifestResource({ manifestId: hlsManifest.id })],
 });
 
-const encodeOutput = await bitmovinApi.encoding.encodings.start(
-  encoding.id,
-  startEncodingRequest
-);
+await bitmovinApi.encoding.encodings.start(encoding.id, startEncodingRequest);
 
-app.get('/', (req, res) => {
-  res.send(input);
+app.post('/', (req, res) => {
+  res.send(startEncodingRequest);
 });
 
 app.listen(port, () => {
-  console.log(input);
+  console.log(`Running on port ${port}`);
 });
