@@ -260,8 +260,8 @@ const startEncodingRequest = new StartEncodingRequest({
 
 await bitmovinApi.encoding.encodings.start(encoding.id, startEncodingRequest);
 
-app.post('/', (req, res) => {
-  res.send(startEncodingRequest);
+app.get('/', (req, res) => {
+  res.send(response);
 });
 
 app.listen(port, () => {
