@@ -6,6 +6,7 @@ import BitmovinApi, {
   AclEntry,
   AclPermission,
   CencDrm,
+  CencFairPlay,
   CencPlayReady,
   CencWidevine,
   CloudRegion,
@@ -149,12 +150,18 @@ const createDrmConfig = (encoding, muxing, output, outputPath) => {
     laUrl: process.env.CENC_PLAYREADY_LA_URL,
   });
 
+  const fairplayDrm = new CencFairPlay({
+    iv: process.env.FAIRPLAY_IV,
+    uri: process.env.FAIRPLAY_KEYURI,
+  });
+
   const cencDrm = new CencDrm({
     outputs: [buildEncodingOutput(output, outputPath)],
     key: process.env.CENC_KEY,
     kid: process.env.CENC_KID,
     widevine: widevineDrm,
     playReady: playreadyDrm,
+    fairPlay: fairplayDrm,
   });
 
   return bitmovinApi.encoding.encodings.muxings.fmp4.drm.cenc.create(
@@ -216,18 +223,17 @@ const logTaskErrors = task => {
 const executeEncoding = async (encoding, startEncodingRequest) => {
   await bitmovinApi.encoding.encodings.start(encoding.id, startEncodingRequest);
 
-  let task;
-  do {
-    await timeout(5000);
-    task = await bitmovinApi.encoding.encodings.status(encoding.id);
-  } while (task.status !== Status.FINISHED && task.status !== Status.ERROR);
+  // do {
+  //   await timeout(5000);
+  //   let task = await bitmovinApi.encoding.encodings.status(encoding.id);
+  // } while (task.status !== Status.FINISHED && task.status !== Status.ERROR);
 
-  if (task.status === Status.ERROR) {
-    logTaskErrors(task);
-    throw new Error('Encoding failed');
-  }
+  // if (task.status === Status.ERROR) {
+  //   logTaskErrors(task);
+  //   throw new Error('Encoding failed');
+  // }
 
-  console.log('Encoding finished successfully');
+  // console.log(task.status);
 };
 
 /*
@@ -239,7 +245,7 @@ MAIN FUNCTION...
 const main = async () => {
   const encoding = await createEncoding(
     exampleName,
-    'Example with CENC DRM protection'
+    '3 Video Configs with CENC DRM protection'
   );
 
   const input = await createS3Input();
@@ -252,7 +258,7 @@ const main = async () => {
     1500000,
     1024
   );
-  /*
+
   const videoCodecConfiguration2 = await createH264VideoConfig(
     'Starting H264 config 2',
     1000000,
@@ -264,19 +270,30 @@ const main = async () => {
     640
   );
 
-  */
-
   const audioCodecConfiguration = await createAacAudioConfig(
     'Starting audio codec config',
     128000
   );
 
-  const videoStream = await createStream(
+  const videoStream1 = await createStream(
     encoding,
     input,
     inputFilePath,
     videoCodecConfiguration1
   );
+  const videoStream2 = await createStream(
+    encoding,
+    input,
+    inputFilePath,
+    videoCodecConfiguration2
+  );
+  const videoStream3 = await createStream(
+    encoding,
+    input,
+    inputFilePath,
+    videoCodecConfiguration3
+  );
+
   const audioStream = await createStream(
     encoding,
     input,
@@ -284,10 +301,14 @@ const main = async () => {
     audioCodecConfiguration
   );
 
-  const videoMuxing = await createFmp4Muxing(encoding, videoStream);
+  const videoMuxing1 = await createFmp4Muxing(encoding, videoStream1);
+  const videoMuxing2 = await createFmp4Muxing(encoding, videoStream2);
+  const videoMuxing3 = await createFmp4Muxing(encoding, videoStream3);
   const audioMuxing = await createFmp4Muxing(encoding, audioStream);
 
-  await createDrmConfig(encoding, videoMuxing, output, 'video');
+  await createDrmConfig(encoding, videoMuxing1, output, 'video');
+  await createDrmConfig(encoding, videoMuxing2, output, 'video');
+  await createDrmConfig(encoding, videoMuxing3, output, 'video');
   await createDrmConfig(encoding, audioMuxing, output, 'audio');
 
   const dashManifest = await createDefaultDashManifest(
@@ -476,4 +497,6 @@ app.get('/', async (req, res) => {
 
 app.listen(port, () => {
   console.log(`Running on port ${port}`);
+  const cenc = new CencFairPlay();
+  console.log(cenc);
 });
