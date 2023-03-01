@@ -162,6 +162,7 @@ const createDrmConfig = (encoding, muxing, output, outputPath) => {
     widevine: widevineDrm,
     playReady: playreadyDrm,
     fairPlay: fairplayDrm,
+    encryptionMode: 'CBC',
   });
 
   return bitmovinApi.encoding.encodings.muxings.fmp4.drm.cenc.create(
@@ -222,18 +223,6 @@ const logTaskErrors = task => {
 
 const executeEncoding = async (encoding, startEncodingRequest) => {
   await bitmovinApi.encoding.encodings.start(encoding.id, startEncodingRequest);
-
-  // do {
-  //   await timeout(5000);
-  //   let task = await bitmovinApi.encoding.encodings.status(encoding.id);
-  // } while (task.status !== Status.FINISHED && task.status !== Status.ERROR);
-
-  // if (task.status === Status.ERROR) {
-  //   logTaskErrors(task);
-  //   throw new Error('Encoding failed');
-  // }
-
-  // console.log(task.status);
 };
 
 /*
@@ -335,168 +324,10 @@ const main = async () => {
 
 main();
 
-/////////////// Old code lives below here /////////////////////
-
-// const videoStream1 = await bitmovinApi.encoding.encodings.streams.create(
-//   encoding.id,
-//   new Stream({
-//     codecConfigId: videoCodecConfiguration1.id,
-//     inputStreams: [videoStreamInput],
-//   })
-// );
-// const videoStream2 = await bitmovinApi.encoding.encodings.streams.create(
-//   encoding.id,
-//   new Stream({
-//     codecConfigId: videoCodecConfiguration2.id,
-//     inputStreams: [videoStreamInput],
-//   })
-// );
-// const videoStream3 = await bitmovinApi.encoding.encodings.streams.create(
-//   encoding.id,
-//   new Stream({
-//     codecConfigId: videoCodecConfiguration3.id,
-//     inputStreams: [videoStreamInput],
-//   })
-// );
-
-// const outputPath = process.env.S3_OUTPUT_PATH;
-// const segmentNaming = 'seg_%number%.m4s';
-// const initSegmentName = 'init.mp4';
-
-// const videoMuxing1 = await bitmovinApi.encoding.encodings.muxings.fmp4.create(
-//   encoding.id,
-//   new Fmp4Muxing({
-//     segmentLength,
-//     segmentNaming,
-//     initSegmentName,
-//     streams: [new MuxingStream({ streamId: videoStream1.id })],
-//     outputs: [
-//       new EncodingOutput({
-//         outputId,
-//         outputPath,
-//         acl: [aclEntry],
-//       }),
-//     ],
-//   })
-// );
-// const videoMuxing2 = await bitmovinApi.encoding.encodings.muxings.fmp4.create(
-//   encoding.id,
-//   new Fmp4Muxing({
-//     segmentLength,
-//     segmentNaming,
-//     initSegmentName,
-//     streams: [new MuxingStream({ streamId: videoStream2.id })],
-//     outputs: [
-//       new EncodingOutput({
-//         outputId,
-//         outputPath,
-//         acl: [aclEntry],
-//       }),
-//     ],
-//   })
-// );
-// const videoMuxing3 = await bitmovinApi.encoding.encodings.muxings.fmp4.create(
-//   encoding.id,
-//   new Fmp4Muxing({
-//     segmentLength,
-//     segmentNaming,
-//     initSegmentName,
-//     streams: [new MuxingStream({ streamId: videoStream3.id })],
-//     outputs: [
-//       new EncodingOutput({
-//         outputId: output.id,
-//         outputPath,
-//         acl: [aclEntry],
-//       }),
-//     ],
-//   })
-// );
-
-// const audioMuxing = await bitmovinApi.encoding.encodings.muxings.fmp4.create(
-//   encoding.id,
-//   new Fmp4Muxing({
-//     segmentLength,
-//     segmentNaming,
-//     initSegmentName,
-//     streams: [new MuxingStream({ streamId: audioStream.id })],
-//     outputs: [
-//       new EncodingOutput({
-//         outputId,
-//         outputPath,
-//         acl: [aclEntry],
-//       }),
-//     ],
-//   })
-// );
-
-// await bitmovinApi.encoding.encodings.muxings.fmp4.drm.cenc.create(
-//   encoding.id,
-//   videoMuxing1.id,
-//   cencDrm
-// );
-// await bitmovinApi.encoding.encodings.muxings.fmp4.drm.cenc.create(
-//   encoding.id,
-//   videoMuxing2.id,
-//   cencDrm
-// );
-// await bitmovinApi.encoding.encodings.muxings.fmp4.drm.cenc.create(
-//   encoding.id,
-//   videoMuxing3.id,
-//   cencDrm
-// );
-// await bitmovinApi.encoding.encodings.muxings.fmp4.drm.cenc.create(
-//   encoding.id,
-//   audioMuxing.id,
-//   cencDrm
-// );
-
-// const manifestOutput = new EncodingOutput({
-//   outputId,
-//   outputPath,
-//   acl: [
-//     new AclEntry({
-//       permission: AclPermission.PUBLIC_READ,
-//       scope: '*',
-//     }),
-//   ],
-// });
-
-// let dashManifest = new DashManifestDefault({
-//   manifestName: 'stream.mpd',
-//   encodingId: encoding.id,
-//   version: DashManifestDefaultVersion.V2,
-//   outputs: [manifestOutput],
-// });
-
-// dashManifest = await bitmovinApi.encoding.manifests.dash.default.create(
-//   dashManifest
-// );
-
-// let hlsManifest = new HlsManifestDefault({
-//   manifestName: 'stream.m3u8',
-//   encodingId: encoding.id,
-//   version: HlsManifestDefaultVersion.V1,
-//   outputs: [manifestOutput],
-// });
-
-// hlsManifest = await bitmovinApi.encoding.manifests.hls.default.create(
-//   hlsManifest
-// );
-
-// const startEncodingRequest = new StartEncodingRequest({
-//   manifestGenerator: ManifestGenerator.V2,
-//   vodDashManifests: [new ManifestResource({ manifestId: dashManifest.id })],
-//   vodHlsManifests: [new ManifestResource({ manifestId: hlsManifest.id })],
-// });
-
-// await bitmovinApi.encoding.encodings.start(encoding.id, startEncodingRequest);
-
 app.get('/', async (req, res) => {
   res.send('Working...');
 });
 
 app.listen(port, () => {
   console.log(`Running on port ${port}`);
-  const cenc = new CencFairPlay();
-  console.log(cenc);
 });
