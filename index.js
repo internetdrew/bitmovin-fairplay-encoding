@@ -7,20 +7,15 @@ import BitmovinApi, {
   AclPermission,
   CencDrm,
   CencFairPlay,
-  CencPlayReady,
-  CencWidevine,
-  CloudRegion,
   ConsoleLogger,
   DashManifestDefault,
   DashManifestDefaultVersion,
   Encoding,
   EncodingOutput,
-  EncodingStreamInput,
   Fmp4Muxing,
   H264VideoConfiguration,
   HlsManifestDefault,
   HlsManifestDefaultVersion,
-  HttpsInput,
   ManifestGenerator,
   ManifestResource,
   MuxingStream,
@@ -37,7 +32,7 @@ dotenv.config();
 const port = process.env.PORT || 3000;
 const app = express();
 
-const exampleName = 'CencDrmContentProtection';
+const exampleName = 'FairPlaySolo';
 
 const bitmovinApi = new BitmovinApi.default({
   apiKey: process.env.BITMOVIN_API_KEY,
@@ -58,7 +53,7 @@ const createS3Input = () => {
     name: process.env.S3_INPUT_NAME,
     accessKey: process.env.S3_ACCESS_KEY,
     secretKey: process.env.S3_SECRET_KEY,
-    bucketName: process.env.S3_BUCKET_NAME,
+    bucketName: process.env.S3_INPUT_BUCKET_NAME,
   });
 
   return bitmovinApi.encoding.inputs.s3.create(s3Input);
@@ -69,11 +64,12 @@ function createS3Output(name) {
     name,
     accessKey: process.env.S3_ACCESS_KEY,
     secretKey: process.env.S3_SECRET_KEY,
-    bucketName: process.env.S3_BUCKET_NAME,
+    bucketName: process.env.S3_OUTPUT_BUCKET_NAME,
   });
 
   return bitmovinApi.encoding.outputs.s3.create(createdS3Output);
 }
+
 const buildAbsolutePath = relativePath => {
   return join(process.env.S3_OUTPUT_PATH, exampleName, relativePath);
 };
@@ -142,14 +138,6 @@ const createFmp4Muxing = (encoding, stream) => {
 };
 
 const createDrmConfig = (encoding, muxing, output, outputPath) => {
-  const widevineDrm = new CencWidevine({
-    pssh: process.env.CENC_WIDEVINE_PSSH,
-  });
-
-  const playreadyDrm = new CencPlayReady({
-    laUrl: process.env.CENC_PLAYREADY_LA_URL,
-  });
-
   const fairplayDrm = new CencFairPlay({
     iv: process.env.FAIRPLAY_IV,
     uri: process.env.FAIRPLAY_KEYURI,
@@ -157,10 +145,9 @@ const createDrmConfig = (encoding, muxing, output, outputPath) => {
 
   const cencDrm = new CencDrm({
     outputs: [buildEncodingOutput(output, outputPath)],
+    encryptionMode: 'CBC',
     key: process.env.CENC_KEY,
     kid: process.env.CENC_KID,
-    widevine: widevineDrm,
-    playReady: playreadyDrm,
     fairPlay: fairplayDrm,
     encryptionMode: 'CBC',
   });
