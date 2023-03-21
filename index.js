@@ -49,6 +49,13 @@ const fairPlayKey = fairPlayData.KeyHEX.slice(0, 32);
 const fairPlayIv = fairPlayData.KeyHEX.slice(32);
 const fairPlayUri = fairPlayData.KeyUri;
 
+const cpixResults = await fetch(
+  `https://cpix.ezdrm.com/KeyGenerator/cpix.aspx?k=${fairPlayData.AssetID}&u=${process.env.EZDRM_USERNAME}&p=${process.env.EZDRM_PASSWORD}&c=resourcename&m=2`,
+  { method: 'POST' }
+).then(res => res.text());
+
+const cpixParsed = parser.parse(cpixResults);
+
 const bitmovinApi = new BitmovinApi.default({
   apiKey: process.env.BITMOVIN_API_KEY,
   logger: new ConsoleLogger(),
@@ -156,14 +163,12 @@ const createDrmConfig = (encoding, muxing, output, outputPath) => {
   const fairplayDrm = new CencFairPlay({
     iv: fairPlayIv,
     uri: fairPlayUri,
-    key: fairPlayKey,
   });
 
   const cencDrm = new CencDrm({
     outputs: [buildEncodingOutput(output, outputPath)],
-    encryptionMode: 'CBC',
-    key: process.env.CENC_KEY,
-    kid: process.env.CENC_KID,
+    key: fairPlayKey,
+    kid: fairPlayData.KeyID,
     fairPlay: fairplayDrm,
     encryptionMode: 'CBC',
   });
@@ -222,6 +227,7 @@ const timeout = milliseconds => {
 
 const logTaskErrors = task => {
   if (task.messages == undefined) return;
+  console.log(task);
 };
 
 const executeEncoding = async (encoding, startEncodingRequest) => {
@@ -248,17 +254,6 @@ const main = async () => {
     1024
   );
 
-  const videoCodecConfiguration2 = await createH264VideoConfig(
-    'Starting H264 config 2',
-    1000000,
-    768
-  );
-  const videoCodecConfiguration3 = await createH264VideoConfig(
-    'Starting H264 config 3',
-    750000,
-    640
-  );
-
   const audioCodecConfiguration = await createAacAudioConfig(
     'Starting audio codec config',
     128000
@@ -270,18 +265,6 @@ const main = async () => {
     inputFilePath,
     videoCodecConfiguration1
   );
-  const videoStream2 = await createStream(
-    encoding,
-    input,
-    inputFilePath,
-    videoCodecConfiguration2
-  );
-  const videoStream3 = await createStream(
-    encoding,
-    input,
-    inputFilePath,
-    videoCodecConfiguration3
-  );
 
   const audioStream = await createStream(
     encoding,
@@ -291,13 +274,9 @@ const main = async () => {
   );
 
   const videoMuxing1 = await createFmp4Muxing(encoding, videoStream1);
-  const videoMuxing2 = await createFmp4Muxing(encoding, videoStream2);
-  const videoMuxing3 = await createFmp4Muxing(encoding, videoStream3);
   const audioMuxing = await createFmp4Muxing(encoding, audioStream);
 
   await createDrmConfig(encoding, videoMuxing1, output, 'video');
-  await createDrmConfig(encoding, videoMuxing2, output, 'video');
-  await createDrmConfig(encoding, videoMuxing3, output, 'video');
   await createDrmConfig(encoding, audioMuxing, output, 'audio');
 
   const dashManifest = await createDefaultDashManifest(
@@ -322,16 +301,18 @@ const main = async () => {
   await executeEncoding(encoding, startEncodingRequest);
 };
 
-main();
+// main();
 
 app.get('/', async (req, res) => {
-  res.send(xmlData);
+  res.send(new CencDrm());
 });
 
 app.listen(port, () => {
   console.log(`Running on port ${port}`);
-  console.log('Uri: ', fairPlayUri);
-  console.log('Key: ', fairPlayKey);
-  console.log('Iv: ', fairPlayIv);
-  console.log(xmlData);
+  console.dir(xmlData);
+  console.log(cpixParsed['cpix:CPIX']['cpix:ContentKeyList']);
+  // console.log('Uri: ', fairPlayUri);
+  // console.log('Key: ', fairPlayKey);
+  // console.log('Iv: ', fairPlayIv);
+  // console.log(xmlData);
 });
