@@ -49,13 +49,6 @@ const fairPlayKey = fairPlayData.KeyHEX.slice(0, 32);
 const fairPlayIv = fairPlayData.KeyHEX.slice(32);
 const fairPlayUri = fairPlayData.KeyUri;
 
-const cpixResults = await fetch(
-  `https://cpix.ezdrm.com/KeyGenerator/cpix.aspx?k=${fairPlayData.AssetID}&u=${process.env.EZDRM_USERNAME}&p=${process.env.EZDRM_PASSWORD}&c=resourcename&m=2`,
-  { method: 'POST' }
-).then(res => res.text());
-
-const cpixParsed = parser.parse(cpixResults);
-
 const bitmovinApi = new BitmovinApi.default({
   apiKey: process.env.BITMOVIN_API_KEY,
   logger: new ConsoleLogger(),
