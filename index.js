@@ -301,7 +301,7 @@ const main = async () => {
   await executeEncoding(encoding, startEncodingRequest);
 };
 
-// main();
+main();
 
 app.get('/', async (req, res) => {
   res.send(new CencDrm());
@@ -309,10 +309,4 @@ app.get('/', async (req, res) => {
 
 app.listen(port, () => {
   console.log(`Running on port ${port}`);
-  console.dir(xmlData);
-  console.log(cpixParsed['cpix:CPIX']['cpix:ContentKeyList']);
-  // console.log('Uri: ', fairPlayUri);
-  // console.log('Key: ', fairPlayKey);
-  // console.log('Iv: ', fairPlayIv);
-  // console.log(xmlData);
 });
