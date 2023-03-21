@@ -1,5 +1,6 @@
 import express from 'express';
 import * as dotenv from 'dotenv';
+import { XMLParser } from 'fast-xml-parser';
 import { join } from 'path';
 import BitmovinApi, {
   AacAudioConfiguration,
@@ -33,6 +34,20 @@ const port = process.env.PORT || 3000;
 const app = express();
 
 const exampleName = 'FairPlaySolo';
+
+const parser = new XMLParser();
+
+const xmlData = await fetch(
+  `http://fps.ezdrm.com/api/keys?u=${process.env.EZDRM_USERNAME}&p=${process.env.EZDRM_PASSWORD} `,
+  {
+    method: 'POST',
+  }
+).then(res => res.text());
+
+const fairPlayData = parser.parse(xmlData).FairPlay;
+const fairPlayKey = fairPlayData.KeyHEX.slice(0, 32);
+const fairPlayIv = fairPlayData.KeyHEX.slice(32);
+const fairPlayUri = fairPlayData.KeyUri;
 
 const bitmovinApi = new BitmovinApi.default({
   apiKey: process.env.BITMOVIN_API_KEY,
@@ -139,8 +154,9 @@ const createFmp4Muxing = (encoding, stream) => {
 
 const createDrmConfig = (encoding, muxing, output, outputPath) => {
   const fairplayDrm = new CencFairPlay({
-    iv: process.env.FAIRPLAY_IV,
-    uri: process.env.FAIRPLAY_KEYURI,
+    iv: fairPlayIv,
+    uri: fairPlayUri,
+    key: fairPlayKey,
   });
 
   const cencDrm = new CencDrm({
@@ -219,15 +235,12 @@ MAIN FUNCTION...
 */
 
 const main = async () => {
-  const encoding = await createEncoding(
-    exampleName,
-    '3 Video Configs with CENC DRM protection'
-  );
+  const encoding = await createEncoding(exampleName, 'FairPlay with CBC');
 
   const input = await createS3Input();
   const inputFilePath = process.env.S3_INPUT_PATH;
 
-  const output = await createS3Output('Fragmented Output');
+  const output = await createS3Output('Fairplay Output');
 
   const videoCodecConfiguration1 = await createH264VideoConfig(
     'Starting H264 config 1',
@@ -312,9 +325,13 @@ const main = async () => {
 main();
 
 app.get('/', async (req, res) => {
-  res.send('Working...');
+  res.send(xmlData);
 });
 
 app.listen(port, () => {
   console.log(`Running on port ${port}`);
+  console.log('Uri: ', fairPlayUri);
+  console.log('Key: ', fairPlayKey);
+  console.log('Iv: ', fairPlayIv);
+  console.log(xmlData);
 });
